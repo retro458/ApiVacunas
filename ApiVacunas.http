@@ -1,0 +1,6 @@
+@ApiVacunas_HostAddress = http://localhost:5137
+
+GET {{ApiVacunas_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

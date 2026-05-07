@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApiVacunas", "ApiVacunas.csproj", "{A6443303-4F3F-FF71-477C-B19D9540D02F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A6443303-4F3F-FF71-477C-B19D9540D02F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6443303-4F3F-FF71-477C-B19D9540D02F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6443303-4F3F-FF71-477C-B19D9540D02F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6443303-4F3F-FF71-477C-B19D9540D02F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3C9CD386-C304-4C9A-8990-564AE8188B18}
+	EndGlobalSection
+EndGlobal
