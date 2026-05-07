@@ -21,8 +21,9 @@ namespace ApiVacunas.Controllers
         }
 
         private int ObtenerIdUsuario() =>
-            Convert.ToInt32(User.FindFirstValue(System.IdentityModel.Tokens.Jwt
-                .JwtRegisteredClaimNames.Sub));
+            Convert.ToInt32(User.FindFirstValue(ClaimTypes.NameIdentifier) 
+                         ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt
+                            .JwtRegisteredClaimNames.Sub));
 
         // ============================================================
         // GET api/dispositivousuario
