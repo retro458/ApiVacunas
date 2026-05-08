@@ -287,7 +287,7 @@ El token se obtiene al hacer login o registro y expira en **24 horas**.
 ```java
 // ApiClient.java
 public class ApiClient {
-    private static final String BASE_URL = "http://IP_TAILSCALE:5001/";
+    private static final String BASE_URL = "https://api.nodesv.com/";
     private static Retrofit retrofit;
  
     public static Retrofit getInstance() {

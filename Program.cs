@@ -111,14 +111,15 @@ var app = builder.Build();
 // ============================================================
 // MIDDLEWARE PIPELINE
 // ============================================================
-
+ if(app.Environment.IsDevelopment())
+{
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "API Vacunas v1");
         options.RoutePrefix = string.Empty;
     });
-
+}
 
 app.UseCors("AllowAll");
 app.UseAuthentication();
