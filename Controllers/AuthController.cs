@@ -238,17 +238,19 @@ namespace ApiVacunas.Controllers
 
         // POST api/auth/google
             [HttpPost("google")]    
-public async Task<IActionResult> LoginGoogle([FromBody] GoogleAuthDto dto)
-{
-    if (string.IsNullOrWhiteSpace(dto.IdToken))
-        return BadRequest(new RespuestaDto
+        public async Task<IActionResult> LoginGoogle([FromBody] GoogleAuthDto dto)
         {
-            Exito   = false,
-            Mensaje = "IdToken es obligatorio."
-        });
+            if (string.IsNullOrWhiteSpace(dto.IdToken))
+            {
+                return BadRequest(new RespuestaDto
+                {
+                    Exito   = false,
+                    Mensaje = "IdToken es obligatorio."
+                });
+            }
  
-    try
-    {
+        try
+        {
         // 1. Validar el token con Google
         var settings = new GoogleJsonWebSignature.ValidationSettings
         {
@@ -363,6 +365,85 @@ public async Task<IActionResult> LoginGoogle([FromBody] GoogleAuthDto dto)
         });
     }
 }
-      
+
+    // ============================================================
+    // Post para registrar usuarios
+    // solo un admin puede crear otro admin 
+    // POST api/auth/registro-admin
+    // ============================================================
+    [HttpPost("registro-admin")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> RegistroAdmin([FromBody] RegistroDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Correo) ||
+            string.IsNullOrWhiteSpace(dto.Password) ||
+            string.IsNullOrWhiteSpace(dto.Nombre))
+        {
+            return BadRequest(new RespuestaDto
+            {
+                Exito = false,
+                Mensaje = "Nombre, correo y password son obligatorios."
+            });
+        }
+
+        // BCrypt hashea el password antes de mandarlo a Oracle
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+
+        var conn = (OracleConnection)_context.Database.GetDbConnection();
+
+        try
+        {
+            await conn.OpenAsync();
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "sp_registrar_usuario";
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            cmd.Parameters.Add("p_nombre", OracleDbType.Varchar2).Value = dto.Nombre;
+            cmd.Parameters.Add("p_correo", OracleDbType.Varchar2).Value = dto.Correo;
+            cmd.Parameters.Add("p_password", OracleDbType.Varchar2).Value = passwordHash;
+            cmd.Parameters.Add("p_telefono", OracleDbType.Varchar2).Value =
+                dto.Telefono ?? (object)DBNull.Value;
+            cmd.Parameters.Add("p_rol", OracleDbType.Varchar2).Value =
+                "admin"; // Forzar rol admin
+
+            var pIdOut = new OracleParameter("p_id_out", OracleDbType.Int32)
+            { Direction = ParameterDirection.Output };
+            var pMensaje = new OracleParameter("p_mensaje", OracleDbType.Varchar2, 500)
+            { Direction = ParameterDirection.Output };
+
+            cmd.Parameters.Add(pIdOut);
+            cmd.Parameters.Add(pMensaje);
+
+            await cmd.ExecuteNonQueryAsync();
+
+            var idOut = Convert.ToInt32(pIdOut.Value.ToString());
+            var mensaje = pMensaje.Value.ToString()!;
+
+            if (idOut == -1)
+            {
+                return Conflict(new RespuestaDto { Exito = false, Mensaje = mensaje });
+            }
+
+            return Ok(new RespuestaDto
+            {
+                Exito = true,
+                Mensaje = mensaje,
+                Data = new { IdUsuario = idOut }
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new RespuestaDto
+            {
+                Exito = false
+                ,Mensaje = "Error interno: " + ex.Message
+            });
+        }
+        finally
+        {
+            await conn.CloseAsync();
+        }      
     }
+  }
 }
