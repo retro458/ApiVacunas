@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Oracle.ManagedDataAccess.Types;
 using ApiVacunas.DTOs;
 using Google.Apis.Auth;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ApiVacunas.Controllers
 {
