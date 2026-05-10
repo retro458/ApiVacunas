@@ -26,6 +26,21 @@ namespace ApiVacunas.Controllers
             _context = context;
             _config = config;
         }
+        
+        //====================================
+        // asigna la jwt a la cookie en lugar de guardarlo en localstorage
+        // ===================================
+        private void SetTokenCookie(string token)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true, // Con modo Full y ForwardedHeaders esto funcionará
+                SameSite = SameSiteMode.Lax, // Mejor compatibilidad con Android
+                Expires = DateTime.UtcNow.AddHours(Convert.ToDouble(_config["Jwt:ExpirationHours"]))
+            };
+            Response.Cookies.Append("X-Access-Token", token, cookieOptions);
+        }
 
         // ============================================================
         // POST api/auth/registro
@@ -179,7 +194,7 @@ namespace ApiVacunas.Controllers
 
                 // Generar JWT
                 var token = GenerarToken(idUsuario, nombre, correo, rol);
-
+		SetTokenCookie(token);
                 return Ok(new RespuestaDto
                 {
                     Exito = true,
@@ -216,21 +231,18 @@ namespace ApiVacunas.Controllers
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var claims = new[]
-            {
-                new Claim(JwtRegisteredClaimNames.Sub,   idUsuario.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, correo),
-                new Claim(ClaimTypes.Name,               nombre),
-                new Claim(ClaimTypes.Role,               rol),
-                new Claim(JwtRegisteredClaimNames.Jti,   Guid.NewGuid().ToString())
+            var claims = new[] {
+                new Claim(JwtRegisteredClaimNames.Sub, idUsuario.ToString()),
+                new Claim(ClaimTypes.Name, nombre),
+                new Claim(ClaimTypes.Role, rol),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
             var token = new JwtSecurityToken(
                 issuer: _config["Jwt:Issuer"],
                 audience: _config["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(
-                                        Convert.ToDouble(_config["Jwt:ExpirationHours"])),
+                expires: DateTime.UtcNow.AddHours(Convert.ToDouble(_config["Jwt:ExpirationHours"])),
                 signingCredentials: creds
             );
 
@@ -337,7 +349,7 @@ namespace ApiVacunas.Controllers
  
             // 4. Generar JWT propio igual que en login normal
             var token = GenerarToken(idUsuario, nombre, correo, rol);
- 
+ 	    SetTokenCookie(token);
             return Ok(new RespuestaDto
             {
                 Exito   = true,
@@ -446,5 +458,26 @@ namespace ApiVacunas.Controllers
             await conn.CloseAsync();
         }      
     }
-  }
+
+    // POST api/auth/logout
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        // Eliminar la cookie del token
+        Response.Cookies.Delete("X-Access-Token", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Lax
+        });
+
+        return Ok(new RespuestaDto
+        {
+            Exito = true,
+            Mensaje = "Logout exitoso."
+        });
+
+        
+   }
+ }
 }

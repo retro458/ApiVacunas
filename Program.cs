@@ -4,124 +4,84 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using ApiVacunas.Data;
-
-
-//Console.WriteLine(BCrypt.Net.BCrypt.HashPassword("admin123"));
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ============================================================
-// BASE DE DATOS - Oracle
-// ============================================================
+// 1. BASE DE DATOS (Oracle)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseOracle(builder.Configuration.GetConnectionString("Oracle")));
 
-// ============================================================
-// JWT
-// ============================================================
-var jwtKey      = builder.Configuration["Jwt:Key"]!;
-var jwtIssuer   = builder.Configuration["Jwt:Issuer"]!;
-var jwtAudience = builder.Configuration["Jwt:Audience"]!;
+// 2. CONFIGURACIÓN DE CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("WebAppPolicy", policy =>
+    {
+        policy.WithOrigins("https://admin.vacunassv.com", "http://localhost:5173") 
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials(); // Indispensable para Cookies
+    });
+});
 
+// 3. AUTENTICACIÓN JWT CONFIGURADA PARA COOKIES
+var jwtKey = builder.Configuration["Jwt:Key"]!;
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer           = true,
-        ValidateAudience         = true,
-        ValidateLifetime         = true,
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer              = jwtIssuer,
-        ValidAudience            = jwtAudience,
-        IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // Nombre de la cookie, se usa para el controller
+            context.Token = context.Request.Cookies["X-Access-Token"];
+            return Task.CompletedTask;
+        }
     };
 });
 
 builder.Services.AddAuthorization();
-
-// ============================================================
-// SWAGGER con soporte JWT
-// ============================================================
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title       = "API Vacunas",
-        Version     = "v1",
-        Description = "API REST para la app móvil de vacunas"
-    });
-
-    // Permitir mandar el token JWT desde Swagger
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Name         = "Authorization",
-        Type         = SecuritySchemeType.ApiKey,
-        Scheme       = "Bearer",
-        BearerFormat = "JWT",
-        In           = ParameterLocation.Header,
-        Description  = "Ingresa el token así: Bearer {tu token}"
-    });
-
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id   = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
-    });
-});
-
-// ============================================================
-// CORS - para que Android y el portal web puedan consumir la API
-// ============================================================
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
-
-// ============================================================
-// CONTROLLERS
-// ============================================================
 builder.Services.AddControllers();
-
-// ============================================================
-// BUILD
-// ============================================================
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// ============================================================
-// MIDDLEWARE PIPELINE
-// ============================================================
- if(app.Environment.IsDevelopment())
+// 4. CONFIGURACIÓN PARA PROXY (Cloudflare Tunnel)
+// Esto arregla los errores del modo "Full" que da claudflared
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
+if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "API Vacunas v1");
-        options.RoutePrefix = string.Empty;
-    });
+    app.UseSwaggerUI();
 }
 
-app.UseCors("AllowAll");
+// 5. PIPELINE (El orden es vital)
+app.UseCors("WebAppPolicy");
+
+// Si no esta en desarrollo, Cloudflare ya maneja el HTTPS, 
+// pero esto ayuda a .NET a entender el contexto.
+app.UseHttpsRedirection(); 
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
