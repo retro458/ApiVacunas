@@ -17,7 +17,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("WebAppPolicy", policy =>
     {
-        policy.WithOrigins("https://admin.vacunassv.com", "http://localhost:5173") 
+        policy.WithOrigins("https://admin.nodesv.com", "http://localhost:5173") 
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials(); // Indispensable para Cookies
