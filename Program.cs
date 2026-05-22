@@ -55,6 +55,32 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// 3.5 CONFIGURACIÓN DE SWAGGER ADAPTADA PARA COOKIES
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("CookieAuth", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "X-Access-Token", 
+        In = Microsoft.OpenApi.Models.ParameterLocation.Cookie,
+        Description = "Pega directamente tu token JWT aquí (sin la palabra Bearer)"
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "CookieAuth"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
+
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -80,8 +106,10 @@ app.UseCors("WebAppPolicy");
 
 // Si no esta en desarrollo, Cloudflare ya maneja el HTTPS, 
 // pero esto ayuda a .NET a entender el contexto.
-app.UseHttpsRedirection(); 
-
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

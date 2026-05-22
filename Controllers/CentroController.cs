@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using ApiVacunas.Data;
 using ApiVacunas.DTOs;
 using ApiVacunas.Models;
+using Oracle.ManagedDataAccess.Client;
+using Oracle.ManagedDataAccess.Types;
 
 
 namespace ApiVacunas.Controllers
@@ -254,6 +256,77 @@ public async Task<IActionResult> ObtenerDetalleCentro(int id)
                 Vacunas = vacunas
             }
         });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new RespuestaDto
+                {
+                    Exito   = false,
+                    Mensaje = "Error interno: " + ex.Message
+                });
+            }
+        }
+
+        // GET api/centros/cercanos
+[HttpGet("cercanos")]
+public async Task<IActionResult> ObtenerCentrosCercanos(
+    [FromQuery] double latitud,
+    [FromQuery] double longitud,
+    [FromQuery] double radioKm = 5)
+{
+    var conn = (OracleConnection)_context.Database.GetDbConnection();
+
+    try
+    {
+        await conn.OpenAsync();
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "sp_centros_cercanos";
+        cmd.CommandType = System.Data.CommandType.StoredProcedure;
+
+        cmd.Parameters.Add("p_latitud",  OracleDbType.Decimal).Value = latitud;
+        cmd.Parameters.Add("p_longitud", OracleDbType.Decimal).Value = longitud;
+        cmd.Parameters.Add("p_radio_km", OracleDbType.Decimal).Value = radioKm;
+
+        var pCursor = new OracleParameter("p_cursor", OracleDbType.RefCursor)
+            { Direction = System.Data.ParameterDirection.Output };
+        var pMensaje = new OracleParameter("p_mensaje", OracleDbType.Varchar2, 500)
+            { Direction = System.Data.ParameterDirection.Output };
+
+        cmd.Parameters.Add(pCursor);
+        cmd.Parameters.Add(pMensaje);
+
+        await cmd.ExecuteNonQueryAsync();
+
+        var centros = new List<CentroDto>();
+        using var reader = ((OracleRefCursor)pCursor.Value).GetDataReader();
+
+        while (await reader.ReadAsync())
+        {
+            centros.Add(new CentroDto
+            {
+                Id           = Convert.ToInt32(reader["ID"]),
+                Nombre       = reader["NOMBRE"].ToString()!,
+                Direccion    = reader["DIRECCION"] == DBNull.Value
+                                ? null : reader["DIRECCION"].ToString(),
+                Latitud      = Convert.ToDecimal(reader["LATITUD"]),
+                Longitud     = Convert.ToDecimal(reader["LONGITUD"]),
+                Tipo         = reader["TIPO"] == DBNull.Value
+                                ? null : reader["TIPO"].ToString(),
+                Horario      = reader["HORARIO"] == DBNull.Value
+                                ? null : reader["HORARIO"].ToString(),
+                Telefono     = reader["TELEFONO"] == DBNull.Value
+                                ? null : reader["TELEFONO"].ToString(),
+                DistanciaKm  = Convert.ToDecimal(reader["DISTANCIA_KM"])
+            });
+        }
+
+        return Ok(new RespuestaDto
+        {
+            Exito   = true,
+            Mensaje = "OK",
+            Data    = centros
+        });
     }
     catch (Exception ex)
     {
@@ -262,6 +335,10 @@ public async Task<IActionResult> ObtenerDetalleCentro(int id)
             Exito   = false,
             Mensaje = "Error interno: " + ex.Message
         });
+    }
+    finally
+    {
+        await conn.CloseAsync();
     }
 }
     }

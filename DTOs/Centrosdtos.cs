@@ -69,6 +69,8 @@ namespace ApiVacunas.DTOs
         public string? Telefono { get; set; }
 
         public bool Activo { get; set; } = true;
+
+        public decimal? DistanciaKm { get; set; }
     }
 
 }
