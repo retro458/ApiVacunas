@@ -106,10 +106,10 @@ app.UseCors("WebAppPolicy");
 
 // Si no esta en desarrollo, Cloudflare ya maneja el HTTPS, 
 // pero esto ayuda a .NET a entender el contexto.
-if (!app.Environment.IsDevelopment())
+/*if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
-}
+}*/
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

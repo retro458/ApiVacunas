@@ -267,6 +267,7 @@ namespace ApiVacunas.Controllers
         // 1. Validar el token con Google
         var settings = new GoogleJsonWebSignature.ValidationSettings
         {
+            
             Audience = new[] { _config["Google:ClientId"] }
         };
  
@@ -276,8 +277,9 @@ namespace ApiVacunas.Controllers
         {
             payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken, settings);
         }
-        catch
+        catch(Exception ex)
         {
+            Console.WriteLine($"[Google Auth Error]: {ex.Message}");
             return Unauthorized(new RespuestaDto
             {
                 Exito   = false,
