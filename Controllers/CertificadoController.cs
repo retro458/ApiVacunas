@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ApiVacunas.Data;
 using ApiVacunas.DTOs;
 using ApiVacunas.Models;
+using ApiVacunas.Services;
 
 namespace ApiVacunas.Controllers
 {
@@ -13,10 +14,12 @@ namespace ApiVacunas.Controllers
     public class CertificadoController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly ICertificadoPdfService _pdfService;
 
-        public CertificadoController(AppDbContext context)
+        public CertificadoController(AppDbContext context, ICertificadoPdfService pdfService)
         {
             _context = context;
+            _pdfService = pdfService;
         }
 
         // ============================================================
@@ -89,8 +92,10 @@ namespace ApiVacunas.Controllers
                     });
 
                 // Generar código QR único si no viene uno
-                var codigoQr = dto.CodigoQr ?? 
-                    $"VAC-{dto.IdMiembro}-{DateTime.Now:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
+                var codigoQr = string.IsNullOrEmpty(dto.CodigoQr) || dto.CodigoQr.ToLower() == "string"
+                     ? 
+                    $"VAC-{dto.IdMiembro}-{DateTime.Now:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..8].ToUpper()}"
+                    : dto.CodigoQr;
 
                 var certificado = new Certificado
                 {
@@ -159,6 +164,36 @@ namespace ApiVacunas.Controllers
                 {
                     Exito   = false,
                     Mensaje = "Error interno: " + ex.Message
+                });
+            }
+        }
+
+        [HttpGet("descargar-pdf/{idMiembro}")]
+        [AllowAnonymous] 
+        public async Task<IActionResult> DescargarCertificadoPdf(int idMiembro)
+        {
+            try
+            {
+                var resultado = await _pdfService.GenerarCarnetPdfAsync(idMiembro);
+
+                if (resultado == null)
+                    return NotFound(new RespuestaDto 
+                    { 
+                        Exito = false, 
+                        Mensaje = "No se encontró el miembro o no posee un carnet digital emitido." 
+                    });
+
+                string nombreArchivo = $"Carnet_{resultado.Value.NombreMiembro.Replace(" ", "_")}.pdf";
+                
+                // Retorna el archivo binario directamente al cliente
+                return File(resultado.Value.PdfBytes, "application/pdf", nombreArchivo);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new RespuestaDto 
+                { 
+                    Exito = false, 
+                    Mensaje = "Error interno al procesar el documento: " + ex.Message 
                 });
             }
         }

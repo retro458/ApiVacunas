@@ -5,9 +5,15 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using ApiVacunas.Data;
 using Microsoft.AspNetCore.HttpOverrides;
-
+using QuestPDF.Infrastructure;
+using ApiVacunas.Services;
 var builder = WebApplication.CreateBuilder(args);
 
+// QuestPDF
+QuestPDF.Settings.License = LicenseType.Community;
+
+// CONFIGURACIÓN DE SERVICIOS
+builder.Services.AddScoped<ICertificadoPdfService, CertificadoPdfService>();
 // 1. BASE DE DATOS (Oracle)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseOracle(builder.Configuration.GetConnectionString("Oracle")));
