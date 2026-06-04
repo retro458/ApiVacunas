@@ -69,6 +69,8 @@ namespace ApiVacunas.Controllers
                         ProximaDosis     = reader["PROXIMA_DOSIS"] == DBNull.Value
                                             ? null : Convert.ToDateTime(reader["PROXIMA_DOSIS"]),
                         DosisNumero      = Convert.ToInt32(reader["DOSIS_NUMERO"]),
+                        TotalDosis       = reader["TOTAL_DOSIS"] == DBNull.Value
+                                            ? 0 : Convert.ToInt32(reader["TOTAL_DOSIS"]),
                         Lote             = reader["LOTE"] == DBNull.Value
                                             ? null : reader["LOTE"].ToString(),
                         NombreMedico     = reader["NOMBRE_MEDICO"] == DBNull.Value

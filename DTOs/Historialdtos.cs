@@ -26,6 +26,7 @@ namespace ApiVacunas.DTOs
         public DateTime  FechaAplicacion { get; set; }
         public DateTime? ProximaDosis    { get; set; }
         public int       DosisNumero     { get; set; }
+        public int       TotalDosis       { get; set; }
         public string?   Lote            { get; set; }
         public string?   NombreMedico    { get; set; }
         public string?   Observaciones   { get; set; }
